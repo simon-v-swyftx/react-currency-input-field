@@ -20,6 +20,7 @@ import {
   FormatValueOptions,
   repositionCursor,
 } from './utils';
+import Big from 'big.js';
 
 export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
   HTMLInputElement,
@@ -131,9 +132,9 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
         stateValue,
         groupSeparator,
       });
-
-      const stringValue = cleanValue({ value: modifiedValue, ...cleanValueOptions });
-
+    
+      let stringValue = cleanValue({ value: modifiedValue, ...cleanValueOptions });
+    
       if (userMaxLength && stringValue.replace(/-/g, '').length > userMaxLength) {
         return;
       }
@@ -149,10 +150,10 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
       const stringValueWithoutSeparator = decimalSeparator
         ? stringValue.replace(decimalSeparator, '.')
         : stringValue;
-
-      const numberValue = parseFloat(stringValueWithoutSeparator);
-
-      const formattedValue = formatValue({
+    
+      const numberValue = new Big(stringValueWithoutSeparator);
+    
+      let formattedValue = formatValue({
         value: stringValue,
         ...formatValueOptions,
       });
@@ -166,6 +167,14 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
         setChangeCount(changeCount + 1);
       }
 
+      const decimalSeparatorIndex = stringValue.indexOf(decimalSeparator);
+      if (decimalSeparatorIndex !== -1 && stringValue.indexOf(decimalSeparator, decimalSeparatorIndex + 1) !== -1) {
+        const parts = stringValue.split(decimalSeparator);
+        stringValue = `${parts[0]}${decimalSeparator}${parts[1]}`;
+      }
+    
+      formattedValue = formatValue({ value: stringValue, ...formatValueOptions });
+    
       setStateValue(formattedValue);
 
       if (onValueChange) {
@@ -225,7 +234,7 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
         decimalScale !== undefined ? decimalScale : fixedDecimalLength
       );
 
-      const numberValue = parseFloat(newValue.replace(decimalSeparator, '.'));
+      const numberValue = new Big(newValue.replace(decimalSeparator, '.'));
 
       const formattedValue = formatValue({
         ...formatValueOptions,
@@ -259,19 +268,18 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
         event.preventDefault();
         setCursor(stateValue.length);
 
-        const currentValue =
-          parseFloat(
-            userValue != null
-              ? String(userValue).replace(decimalSeparator, '.')
-              : cleanValue({ value: stateValue, ...cleanValueOptions })
-          ) || 0;
-        const newValue = key === 'ArrowUp' ? currentValue + step : currentValue - step;
+        const currentValue = new Big(
+          userValue != null
+            ? String(userValue).replace(decimalSeparator, '.')
+            : cleanValue({ value: stateValue, ...cleanValueOptions })
+        );
+        const newValue = key === 'ArrowUp' ? currentValue.plus(step) : currentValue.minus(step);
 
-        if (min !== undefined && newValue < Number(min)) {
+        if (min !== undefined && newValue.lt(new Big(min))) {
           return;
         }
 
-        if (max !== undefined && newValue > Number(max)) {
+        if (max !== undefined && newValue.gt(new Big(max))) {
           return;
         }
 
@@ -280,7 +288,7 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
           : undefined;
 
         processChange(
-          String(fixedLength ? newValue.toFixed(fixedLength) : newValue).replace(
+          String(fixedLength ? newValue.toFixed(fixedLength) : newValue.toString()).replace(
             '.',
             decimalSeparator
           )

@@ -66,7 +66,7 @@ export const cleanValue = ({
       return '';
     }
     const parsed = parseAbbrValue(withoutInvalidChars, decimalSeparator);
-    if (parsed) {
+    if (parsed !== undefined) {
       valueOnly = String(parsed);
     }
   }

@@ -65,6 +65,7 @@ export const formatValue = (options: FormatValueOptions): string => {
     decimalScale,
     prefix = '',
     suffix = '',
+    groupSeparator = ',',
   } = options;
 
   if (_value === '' || _value === undefined) {
@@ -84,7 +85,12 @@ export const formatValue = (options: FormatValueOptions): string => {
       ? replaceDecimalSeparator(_value, decimalSeparator, isNegative)
       : _value;
 
-  if (decimalSeparator && decimalSeparator !== '-' && value.startsWith(decimalSeparator)) {
+  if (
+    decimalSeparator &&
+    decimalSeparator !== '-' &&
+    value.startsWith(decimalSeparator) &&
+    !value.includes('.')
+  ) {
     value = '0' + value;
   }
 
@@ -106,7 +112,18 @@ export const formatValue = (options: FormatValueOptions): string => {
       )
     : new Intl.NumberFormat(undefined, defaultNumberFormatOptions);
 
-  const parts = numberFormatter.formatToParts(Number(value));
+  let parts: Intl.NumberFormatPart[];
+
+  if (value.includes('.')) {
+    const [integerPart, decimalPart] = value.split('.');
+    const integerBig = BigInt(integerPart);
+    parts = numberFormatter.formatToParts(integerBig);
+    parts.push({ type: 'decimal', value: decimalSeparator || '.' });
+    parts.push({ type: 'fraction', value: decimalPart });
+  } else {
+    const bigIntValue = BigInt(value);
+    parts = numberFormatter.formatToParts(bigIntValue);
+  }
 
   let formatted = replaceParts(parts, options);
 
@@ -114,24 +131,26 @@ export const formatValue = (options: FormatValueOptions): string => {
   const intlSuffix = getSuffix(formatted, { ...options });
 
   // Include decimal separator if user input ends with decimal separator
-  const includeDecimalSeparator = _value.slice(-1) === decimalSeparator ? decimalSeparator : '';
+  const includeDecimalSeparator =
+    _value.slice(-1) === decimalSeparator && !formatted.endsWith(decimalSeparator)
+      ? decimalSeparator
+      : '';
 
-  const [, decimals] = value.match(RegExp('\\d+\\.(\\d+)')) || [];
+  const [, decimals] =
+    value
+      .replace(new RegExp(escapeRegExp(groupSeparator), 'g'), '')
+      .match(RegExp('\\d+\\.(\\d+)')) || [];
 
-  // Keep original decimal padding if no decimalScale
-  if (decimalScale === undefined && decimals && decimalSeparator) {
-    if (formatted.includes(decimalSeparator)) {
-      formatted = formatted.replace(
-        RegExp(`(\\d+)(${escapeRegExp(decimalSeparator)})(\\d+)`, 'g'),
-        `$1$2${decimals}`
-      );
-    } else {
-      if (intlSuffix && !suffix) {
-        formatted = formatted.replace(intlSuffix, `${decimalSeparator}${decimals}${intlSuffix}`);
-      } else {
-        formatted = `${formatted}${decimalSeparator}${decimals}`;
-      }
-    }
+  if (
+    decimalScale !== undefined &&
+    decimals &&
+    decimalSeparator &&
+    formatted.includes(decimalSeparator)
+  ) {
+    formatted = formatted.replace(
+      RegExp(`(\\d+)(${escapeRegExp(decimalSeparator)})(\\d+)`, 'g'),
+      `$1$2${decimals.slice(0, decimalScale)}`
+    );
   }
 
   if (suffix && includeDecimalSeparator) {

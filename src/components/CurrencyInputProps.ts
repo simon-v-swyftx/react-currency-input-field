@@ -15,7 +15,7 @@ export type CurrencyInputOnChangeValues = {
    *   "1.99" > 1.99
    *   "" > null
    */
-  float: number | null;
+  float: Big | null;
 
   /**
    * Value after applying formatting
@@ -189,6 +189,6 @@ export type CurrencyInputProps = Overwrite<
      * specifically on blur events. If disabled or set to false, the onValueChange will not trigger on blur.
      * Default = true
      */
-     formatValueOnBlur?: boolean;
+    formatValueOnBlur?: boolean;
   }
 >;
