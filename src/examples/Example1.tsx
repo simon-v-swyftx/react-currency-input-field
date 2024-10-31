@@ -62,8 +62,8 @@ export const Example1 = () => {
                 value={value}
                 onValueChange={handleOnValueChange}
                 placeholder="Please enter a number"
-                prefix={prefix}
                 step={1}
+                intlConfig={{ locale: "ar-OM", currency: "OMR" }}
               />
               <div className="invalid-feedback">{errorMessage}</div>
             </div>

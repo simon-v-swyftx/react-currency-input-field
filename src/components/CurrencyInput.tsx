@@ -19,6 +19,7 @@ import {
   getSuffix,
   FormatValueOptions,
   repositionCursor,
+  convertToWesternArabicDigits,
 } from './utils';
 import Big from 'big.js';
 
@@ -132,9 +133,9 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
         stateValue,
         groupSeparator,
       });
-    
+
       let stringValue = cleanValue({ value: modifiedValue, ...cleanValueOptions });
-    
+
       if (userMaxLength && stringValue.replace(/-/g, '').length > userMaxLength) {
         return;
       }
@@ -150,9 +151,15 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
       const stringValueWithoutSeparator = decimalSeparator
         ? stringValue.replace(decimalSeparator, '.')
         : stringValue;
-    
-      const numberValue = new Big(stringValueWithoutSeparator);
-    
+
+      // Convert non-western Arabic digits to western Arabic digits for big.js
+      const westernArabicValue = convertToWesternArabicDigits(stringValueWithoutSeparator);
+      if (isNaN(Number(westernArabicValue))) {
+        return;
+      }
+
+      const numberValue = new Big(westernArabicValue);
+
       let formattedValue = formatValue({
         value: stringValue,
         ...formatValueOptions,
@@ -172,9 +179,9 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
         const parts = stringValue.split(decimalSeparator);
         stringValue = `${parts[0]}${decimalSeparator}${parts[1]}`;
       }
-    
+
       formattedValue = formatValue({ value: stringValue, ...formatValueOptions });
-    
+
       setStateValue(formattedValue);
 
       if (onValueChange) {
@@ -234,7 +241,13 @@ export const CurrencyInput: FC<CurrencyInputProps> = forwardRef<
         decimalScale !== undefined ? decimalScale : fixedDecimalLength
       );
 
-      const numberValue = new Big(newValue.replace(decimalSeparator, '.'));
+      // Convert non-western Arabic digits to western Arabic digits for big.js
+      const westernArabicValue = convertToWesternArabicDigits(newValue.replace(decimalSeparator, '.'));
+      if (isNaN(Number(westernArabicValue))) {
+        return;
+      }
+
+      const numberValue = new Big(westernArabicValue);
 
       const formattedValue = formatValue({
         ...formatValueOptions,
